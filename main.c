@@ -15,7 +15,7 @@
 # include <stdio.h>
 # include <stdlib.h>
 # include <string.h>
-# include "set.h"
+# include "strings/table.c"
 
 
 /* This is sufficient for the test cases in /scratch/coen12. */

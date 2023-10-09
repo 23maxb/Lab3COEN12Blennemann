@@ -23,23 +23,6 @@ typedef struct set {
 } stringTable;
 
 /**
- * Method given in lab documentation.
- * Returns a hash value for the given string.
- * This hash function is case sensitive.
- *
- *
- * @param s the string to get a hash for
- * @return the hash value
- * @timeComplexity O(N)
- */
-unsigned strhash(char* s) {
-    unsigned hash = 0;
-    while (*s != '\0')
-        hash = 31 * hash + *s++;
-    return hash;
-}
-
-/**
  * Returns a new set with the specified number of elements as the maximum capacity.
  *
  * @param maxElts the maximum amount of elements the set can hold
@@ -69,10 +52,9 @@ SET* createSet(int maxElts) { // maxElts should be unsigned but the header file 
  */
 void destroySet(SET* sp) {
     assert(sp != NULL);
-    unsigned i = 0;
+    int i = 0;
     for (; i < sp->count; i++)
-        if (sp->flags[i] != 0)
-            free(sp->data[i]);
+        free(sp->data[i]);
     free(sp->data);
     free(sp->flags);
 }
@@ -142,7 +124,6 @@ void addElement(SET* sp, char* elt) {
     if (alreadyExists)
         return;
     sp->data[index] = strdup(elt);
-    sp->flags[index] = 1;
     sp->count++;
 }
 
@@ -163,7 +144,9 @@ void removeElement(SET* sp, char* elt) {
         unsigned index = findElementIndex(sp, elt, &found);
         if (found == false)
             return;
+        free(sp->data[index]);
         sp->flags[index] = 2;
+        sp->data[index] = NULL;
         sp->count--;
     }
 }
