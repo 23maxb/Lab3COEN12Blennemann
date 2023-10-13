@@ -15,7 +15,7 @@
 # include <stdio.h>
 # include <stdlib.h>
 # include <string.h>
-# include "strings/table.c"
+# include "generic/table.c"
 
 
 /* This is sufficient for the test cases in /scratch/coen12. */
@@ -24,18 +24,35 @@
 
 
 /*
+ * Function:    strhash
+ *
+ * Description: Return a hash value for a string S.
+ */
+
+static unsigned strhash(char* s) {
+
+    unsigned hash = 0;
+
+
+    while (*s != '\0')
+        hash = 31 * hash + *s++;
+
+    return hash;
+}
+
+
+/*
  * Function:    main
  *
  * Description: Driver function for the test application.
  */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char* argv[]) {
     argc = 2;
-    argv[1] = "Macbeth.txt";
-    FILE *fp;
-    char buffer[BUFSIZ];
-    SET *odd;
+    argv[1] = "test.txt";
+    FILE* fp;
+    char buffer[BUFSIZ], * word;
+    SET* odd;
     int words;
 
 
@@ -55,15 +72,16 @@ int main(int argc, char *argv[])
     /* Insert or delete words to compute their parity. */
 
     words = 0;
-    odd = createSet(MAX_SIZE);
+    odd = createSet(MAX_SIZE, strcmp, strhash);
 
     while (fscanf(fp, "%s", buffer) == 1) {
-        words ++;
+        words++;
 
-        if (findElement(odd, buffer))
+        if ((word = findElement(odd, buffer)) != NULL) {
             removeElement(odd, buffer);
-        else
-            addElement(odd, buffer);
+            free(word);
+        } else
+            addElement(odd, strdup(buffer));
     }
 
     printf("%d total words\n", words);

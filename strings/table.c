@@ -1,12 +1,12 @@
 /**
- * This file (sorted.c) is an implementation for the set data type.
- * A similar file exists (unsorted.c) that implements this set but does not sort the elements as they are added.
+ * This file (table.c) is an implementation for the set data type.
+ * Multiple similar file exists (unsorted.c, sorted.c, and generic/table.c) that implements this set in various other ways.
  * The set data type guarantees no duplicate elements.
- * This implementation reduces the time complexity of searches for values by sorting the array (from O(N) to O(log(N)))).
- * However, this implementation leads to a O(Nlog(N)) worst case scenario time complexity for the addElement function.
+ * This implementation reduces the time complexity of searches for values by hashing .
+ * However, this implementation leads to a O(N) worst case scenario time complexity for the addElement function.
  *
  * @author Max Blennemann
- * @version 9/25/23
+ * @version 10/10/23
  */
 
 #include "set.h"
@@ -27,7 +27,6 @@ typedef struct set {
  * Returns a hash value for the given string.
  * This hash function is case sensitive.
  *
- *
  * @param s the string to get a hash for
  * @return the hash value
  * @timeComplexity O(N)
@@ -44,11 +43,12 @@ unsigned strhash(char* s) {
  *
  * @param maxElts the maximum amount of elements the set can hold
  * @return the newly allocated set
- * @timeComplexity O(N)
+ * @timeComplexity O(M) Where m is the maximum number of elements the set can hold (maxElts)
  */
 SET* createSet(int maxElts) { // maxElts should be unsigned but the header file has this variable signed
     stringTable* a = malloc(sizeof(stringTable));
     assert(a != NULL);
+    assert(maxElts >= 0);
     a->count = 0;
     a->size = maxElts;
     a->data = malloc(maxElts * sizeof(char*));
@@ -91,21 +91,24 @@ int numElements(SET* sp) {
 
 /**
  * Finds the index of an element in the set.
- * Returns -1 if the element does not exist within the set.
+ * Returns the location the element would go if the element is not found.
+ * Returns sp->size if the element can't be added.
  * Pass a boolean pointer as found if you want found variable returned as a boolean.
  *
- * @precondition Set is sorted.
  * @param sp the set to search through
  * @param elt the element to search for
- * @return the index where the element is or should be added and also found kinda
- * @timeComplexity O(log(n))
+ * @return the index where the element is or should be added
+ * or sp->size if the element is not found
+ * @timeComplexity O(N) worst case; O(1) average case
+ * Worst case occurs when the element is not in the set and the set is full.
  */
 static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
     assert(sp != NULL);
     assert(elt != NULL);
-    unsigned index = strhash(elt) % sp->size;
+    unsigned const home = strhash(elt) % sp->size;
+    unsigned index = home;
     unsigned firstDeleted = sp->size;
-    while (index < sp->size) {
+    if (index < sp->size)
         if (sp->flags[index] == 0) {
             if (found != NULL)
                 *found = false;
@@ -117,7 +120,21 @@ static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
         } else {
             if (sp->flags[index] == 2 && firstDeleted == sp->size)
                 firstDeleted = index;
-            index++;
+            index = (index + 1) % sp->size;
+        }
+    while (index < sp->size && index != home) {
+        if (sp->flags[index] == 0) {
+            if (found != NULL)
+                *found = false;
+            return index;
+        } else if (sp->flags[index] == 1 && strcmp(sp->data[index], elt) == 0) {
+            if (found != NULL)
+                *found = true;
+            return index;
+        } else {
+            if (sp->flags[index] == 2 && firstDeleted == sp->size)
+                firstDeleted = index;
+            index = (index + 1) % sp->size;
         }
     }
     if (found != NULL)
@@ -131,7 +148,7 @@ static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
  *
  * @param sp the set to add an element to
  * @param elt the element to add.
- * @timeComplexity O(Nlog(N))
+ * @timeComplexity O(N) worst case; O(1) average case
  */
 void addElement(SET* sp, char* elt) {
     assert(sp != NULL);
@@ -148,13 +165,11 @@ void addElement(SET* sp, char* elt) {
 
 /**
  * This method removes an element from the give set.
- * It also shifts all the elements after it forward 1 to speed up future searches.
- * This element keeps the set sorted.
  * This function will silently fail if the string given does not exist.
  *
  * @param sp the set to remove the element from
  * @param elt the element to remove
- * @timeComplexity O(N)
+ * @timeComplexity O(N) worst case; O(1) average case
  */
 void removeElement(SET* sp, char* elt) {
     assert(sp != NULL);
@@ -178,7 +193,7 @@ void removeElement(SET* sp, char* elt) {
  * @param elt the element to search for
  * @return a pointer to the string in the set if it exists
  * otherwise NULL
- * @timeComplexity O(log(N))
+ * @timeComplexity O(N) worst case; O(1) average case
  */
 char* findElement(SET* sp, char* elt) {
     assert(sp != NULL);
@@ -186,16 +201,17 @@ char* findElement(SET* sp, char* elt) {
         return NULL;
     bool found = false;
     unsigned a = findElementIndex(sp, elt, &found);
-    if (found == false)
+    if (found == false) {
         return NULL;
+    }
     return sp->data[a];
 }
 
 /**
  * Copies all the values in the set to a new array and returns that new array.
  * The user must free the array of strings before exiting to avoid a memory leak.
- * Since this set maintains an array of strings sorted alphabetically this method is guaranteed to
- * return an array of alphabetically sorted strings.
+ * Since this set is not sorted the returned array is not guaranteed to be sorted in any way.
+ * If the user wants a sorted array they must sort it themselves.
  *
  * @param sp The set to access
  * @return A new array of strings

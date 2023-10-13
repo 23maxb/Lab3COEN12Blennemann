@@ -1,12 +1,12 @@
 /**
- * This file (sorted.c) is an implementation for the set data type.
- * A similar file exists (unsorted.c) that implements this set but does not sort the elements as they are added.
+ * This file (table.c) is an implementation for the set data type.
+ * Multiple similar file exists (unsorted.c, sorted.c, and strings/table.c) that implements this set in various other ways.
  * The set data type guarantees no duplicate elements.
- * This implementation reduces the time complexity of searches for values by sorting the array (from O(N) to O(log(N)))).
- * However, this implementation leads to a O(Nlog(N)) worst case scenario time complexity for the addElement function.
+ * This implementation reduces the time complexity of searches for values by hashing .
+ * However, this implementation leads to a O(N) worst case scenario time complexity for the addElement function.
  *
  * @author Max Blennemann
- * @version 9/25/23
+ * @version 10/10/23
  */
 
 #include "set.h"
@@ -16,25 +16,32 @@
 #include <stdbool.h>
 
 typedef struct set {
-    char** data;
+    void** data;
     unsigned* flags; // 0 = empty, 1 = filled, 2 = deleted
     unsigned int count; // Number of elements that contain data
     unsigned int size; // How much space is allocated to the array
-} stringTable;
+
+    int (* compare)(); //Method passed in from createSet that compares two elements
+
+    unsigned (* hash)(); //Method passed in from createSet that hashes an element
+} genericTable;
 
 /**
  * Returns a new set with the specified number of elements as the maximum capacity.
  *
  * @param maxElts the maximum amount of elements the set can hold
  * @return the newly allocated set
- * @timeComplexity O(N)
+ * @timeComplexity O(M) Where m is the maximum number of elements the set can hold (maxElts)
  */
-SET* createSet(int maxElts) { // maxElts should be unsigned but the header file has this variable signed
-    stringTable* a = malloc(sizeof(stringTable));
+SET* createSet(int maxElts, int (* compare)(), unsigned (* hash)()) {
+    genericTable* a = malloc(sizeof(genericTable));
     assert(a != NULL);
+    assert(maxElts >= 0);
+    a->compare = compare;
+    a->hash = hash;
     a->count = 0;
     a->size = maxElts;
-    a->data = malloc(maxElts * sizeof(char*));
+    a->data = malloc(maxElts * sizeof(void*));
     a->flags = malloc(maxElts * sizeof(unsigned));
     assert(a->data != NULL);
     assert(a->flags != NULL);
@@ -48,13 +55,10 @@ SET* createSet(int maxElts) { // maxElts should be unsigned but the header file 
  * Frees the memory allocated to the set.
  *
  * @param sp the set to destroy
- * @timeComplexity O(N)
+ * @timeComplexity O(1)
  */
 void destroySet(SET* sp) {
     assert(sp != NULL);
-    int i = 0;
-    for (; i < sp->count; i++)
-        free(sp->data[i]);
     free(sp->data);
     free(sp->flags);
 }
@@ -73,33 +77,49 @@ int numElements(SET* sp) {
 
 /**
  * Finds the index of an element in the set.
- * Returns -1 if the element does not exist within the set.
+ * Returns the location the element would go if the element is not found.
+ * Returns sp->size if the element can't be added.
  * Pass a boolean pointer as found if you want found variable returned as a boolean.
  *
- * @precondition Set is sorted.
  * @param sp the set to search through
  * @param elt the element to search for
- * @return the index where the element is or should be added and also found kinda
- * @timeComplexity O(log(n))
+ * @return the index where the element is or should be added
+ * or sp->size if the element is not found
+ * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user give hash function) average case
  */
-static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
+static unsigned int findElementIndex(SET* sp, void* elt, bool* found) {
     assert(sp != NULL);
     assert(elt != NULL);
-    unsigned index = strhash(elt) % sp->size;
+    unsigned const home = (*sp->hash)(elt) % sp->size;
+    unsigned index = home;
     unsigned firstDeleted = sp->size;
-    while (index < sp->size) {
+    if (index < sp->size)
         if (sp->flags[index] == 0) {
             if (found != NULL)
                 *found = false;
             return index;
-        } else if (sp->flags[index] == 1 && strcmp(sp->data[index], elt) == 0) {
+        } else if (sp->flags[index] == 1 && (*sp->compare)(sp->data[index], elt) == 0) {
             if (found != NULL)
                 *found = true;
             return index;
         } else {
             if (sp->flags[index] == 2 && firstDeleted == sp->size)
                 firstDeleted = index;
-            index++;
+            index = (index + 1) % sp->size;
+        }
+    while (index < sp->size && index != home) {
+        if (sp->flags[index] == 0) {
+            if (found != NULL)
+                *found = false;
+            return index;
+        } else if (sp->flags[index] == 1 && (*sp->compare)(sp->data[index], elt) == 0) {
+            if (found != NULL)
+                *found = true;
+            return index;
+        } else {
+            if (sp->flags[index] == 2 && firstDeleted == sp->size)
+                firstDeleted = index;
+            index = (index + 1) % sp->size;
         }
     }
     if (found != NULL)
@@ -113,9 +133,9 @@ static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
  *
  * @param sp the set to add an element to
  * @param elt the element to add.
- * @timeComplexity O(Nlog(N))
+ * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user give hash function) average case
  */
-void addElement(SET* sp, char* elt) {
+void addElement(SET* sp, void* elt) {
     assert(sp != NULL);
     assert(elt != NULL);
     assert(sp->count < sp->size);
@@ -124,29 +144,27 @@ void addElement(SET* sp, char* elt) {
     if (alreadyExists)
         return;
     sp->data[index] = strdup(elt);
+    sp->flags[index] = 1;
     sp->count++;
 }
 
 /**
  * This method removes an element from the give set.
- * It also shifts all the elements after it forward 1 to speed up future searches.
- * This element keeps the set sorted.
- * This function will silently fail if the string given does not exist.
+ * Marks the flag array for removed elements as 2.
+ * This function will silently fail if the element given does not exist.
  *
  * @param sp the set to remove the element from
  * @param elt the element to remove
- * @timeComplexity O(N)
+ * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user give hash function) average case
  */
-void removeElement(SET* sp, char* elt) {
+void removeElement(SET* sp, void* elt) {
     assert(sp != NULL);
     if (elt != NULL) {
         bool found = false;
         unsigned index = findElementIndex(sp, elt, &found);
         if (found == false)
             return;
-        free(sp->data[index]);
         sp->flags[index] = 2;
-        sp->data[index] = NULL;
         sp->count--;
     }
 }
@@ -159,11 +177,11 @@ void removeElement(SET* sp, char* elt) {
  * @precondition Set is sorted.
  * @param sp the set to search through
  * @param elt the element to search for
- * @return a pointer to the string in the set if it exists
+ * @return a pointer to the generic in the set if it exists
  * otherwise NULL
- * @timeComplexity O(log(N))
+ * @timeComplexity O(N) worst case; O(1) average case
  */
-char* findElement(SET* sp, char* elt) {
+void* findElement(SET* sp, void* elt) {
     assert(sp != NULL);
     if (elt == NULL)
         return NULL;
@@ -176,23 +194,23 @@ char* findElement(SET* sp, char* elt) {
 
 /**
  * Copies all the values in the set to a new array and returns that new array.
- * The user must free the array of strings before exiting to avoid a memory leak.
- * Since this set maintains an array of strings sorted alphabetically this method is guaranteed to
- * return an array of alphabetically sorted strings.
+ * The user must free the array of generics before exiting to avoid a memory leak.
+ * Since this set is not sorted by any distinguishable features of the generics
+ * the returned array is not guaranteed to be sorted in any way.
  *
  * @param sp The set to access
- * @return A new array of strings
+ * @return A new array of void* pointers to the generics in the sets
  * @timeComplexity O(N)
  */
-char** getElements(SET* sp) {
+void* getElements(SET* sp) { //TODO check if this works
     assert(sp != NULL);
-    char** toReturn = malloc(sp->count * sizeof(char*));
+    void** toReturn = malloc(sp->count * sizeof(void*));
     assert(toReturn != NULL);
     unsigned whereToAdd = 0;
     unsigned i = 0;
     for (; i < sp->size; i++) {
         if (sp->flags[i] == 1) {
-            toReturn[whereToAdd] = strdup(sp->data[i]);
+            toReturn[whereToAdd] = sp->data[i];
             whereToAdd++;
         }
     }
