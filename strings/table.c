@@ -1,3 +1,4 @@
+//table.c
 /**
  * This file (table.c) is an implementation for the set data type.
  * Multiple similar file exists (unsorted.c, sorted.c, and generic/table.c) that implements this set in various other ways.
@@ -46,6 +47,7 @@ unsigned strhash(char* s) {
  * @timeComplexity O(M) Where m is the maximum number of elements the set can hold (maxElts)
  */
 SET* createSet(int maxElts) { // maxElts should be unsigned but the header file has this variable signed
+    assert(maxElts >= 0);
     stringTable* a = malloc(sizeof(stringTable));
     assert(a != NULL);
     assert(maxElts >= 0);
@@ -108,10 +110,11 @@ static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
     unsigned const home = strhash(elt) % sp->size;
     unsigned index = home;
     unsigned firstDeleted = sp->size;
-    if (index < sp->size)
+    if (index < sp->size) {
         if (sp->flags[index] == 0) {
-            if (found != NULL)
+            if (found != NULL) {
                 *found = false;
+            }
             return index;
         } else if (sp->flags[index] == 1 && strcmp(sp->data[index], elt) == 0) {
             if (found != NULL)
@@ -122,6 +125,7 @@ static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
                 firstDeleted = index;
             index = (index + 1) % sp->size;
         }
+    }
     while (index < sp->size && index != home) {
         if (sp->flags[index] == 0) {
             if (found != NULL)

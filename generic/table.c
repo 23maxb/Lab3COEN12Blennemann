@@ -1,3 +1,4 @@
+//table.c
 /**
  * This file (table.c) is an implementation for the set data type.
  * Multiple similar file exists (unsorted.c, sorted.c, and strings/table.c) that implements this set in various other ways.
@@ -93,7 +94,7 @@ static unsigned int findElementIndex(SET* sp, void* elt, bool* found) {
     unsigned const home = (*sp->hash)(elt) % sp->size;
     unsigned index = home;
     unsigned firstDeleted = sp->size;
-    if (index < sp->size)
+    if (index < sp->size) {
         if (sp->flags[index] == 0) {
             if (found != NULL)
                 *found = false;
@@ -107,6 +108,7 @@ static unsigned int findElementIndex(SET* sp, void* elt, bool* found) {
                 firstDeleted = index;
             index = (index + 1) % sp->size;
         }
+    }
     while (index < sp->size && index != home) {
         if (sp->flags[index] == 0) {
             if (found != NULL)

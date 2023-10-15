@@ -15,7 +15,7 @@
       <paths name="Remote Host (83140bfc-54a7-471a-972b-a32c67ecc7df)">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/tmp/.idea" local="$PROJECT_DIR$/.idea" />
           </mappings>
         </serverdata>
       </paths>
