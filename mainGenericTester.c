@@ -49,7 +49,7 @@ static unsigned strhash(char* s) {
 
 int main(int argc, char* argv[]) {
     argc = 2;
-    argv[1] = "test.txt";
+    argv[1] = "Macbeth.txt";
     FILE* fp;
     char buffer[BUFSIZ], * word;
     SET* odd;
