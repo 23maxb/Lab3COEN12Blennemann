@@ -30,6 +30,8 @@
  */
 
 int main(int argc, char* argv[]) {
+    printf("%llu\n", sizeof(char));
+    printf("%llu\n", sizeof(int));
     argc = 2;
     argv[1] = "Macbeth.txt";
     FILE* fp;

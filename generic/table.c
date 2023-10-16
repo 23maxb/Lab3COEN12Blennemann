@@ -18,7 +18,7 @@
 
 typedef struct set {
     void** data;
-    unsigned* flags; // 0 = empty, 1 = filled, 2 = deleted
+    char* flags; // 'e' = empty, 'f' = filled, 'd' = deleted
     unsigned int count; // Number of elements that contain data
     unsigned int size; // How much space is allocated to the array
 
@@ -32,7 +32,7 @@ typedef struct set {
  *
  * @param maxElts the maximum amount of elements the set can hold
  * @return the newly allocated set
- * @timeComplexity O(M) Where m is the maximum number of elements the set can hold (maxElts)
+ * @timeComplexity O(N) Where N is the maximum number of elements the set can hold (maxElts)
  */
 SET* createSet(int maxElts, int (* compare)(), unsigned (* hash)()) {
     genericTable* a = malloc(sizeof(genericTable));
@@ -48,7 +48,7 @@ SET* createSet(int maxElts, int (* compare)(), unsigned (* hash)()) {
     assert(a->flags != NULL);
     unsigned i = 0;
     for (; i < maxElts; i++)
-        a->flags[i] = 0;
+        a->flags[i] = 'e';
     return a;
 }
 
@@ -95,31 +95,31 @@ static unsigned int findElementIndex(SET* sp, void* elt, bool* found) {
     unsigned index = home;
     unsigned firstDeleted = sp->size;
     if (index < sp->size) {
-        if (sp->flags[index] == 0) {
+        if (sp->flags[index] == 'e') {
             if (found != NULL)
                 *found = false;
             return index;
-        } else if (sp->flags[index] == 1 && (*sp->compare)(sp->data[index], elt) == 0) {
+        } else if (sp->flags[index] == 'f' && (*sp->compare)(sp->data[index], elt) == 0) {
             if (found != NULL)
                 *found = true;
             return index;
         } else {
-            if (sp->flags[index] == 2 && firstDeleted == sp->size)
+            if (sp->flags[index] == 'd' && firstDeleted == sp->size)
                 firstDeleted = index;
             index = (index + 1) % sp->size;
         }
     }
     while (index < sp->size && index != home) {
-        if (sp->flags[index] == 0) {
+        if (sp->flags[index] == 'e') {
             if (found != NULL)
                 *found = false;
             return index;
-        } else if (sp->flags[index] == 1 && (*sp->compare)(sp->data[index], elt) == 0) {
+        } else if (sp->flags[index] == 'f' && (*sp->compare)(sp->data[index], elt) == 0) {
             if (found != NULL)
                 *found = true;
             return index;
         } else {
-            if (sp->flags[index] == 2 && firstDeleted == sp->size)
+            if (sp->flags[index] == 'd' && firstDeleted == sp->size)
                 firstDeleted = index;
             index = (index + 1) % sp->size;
         }
@@ -146,7 +146,7 @@ void addElement(SET* sp, void* elt) {
     if (alreadyExists)
         return;
     sp->data[index] = strdup(elt);
-    sp->flags[index] = 1;
+    sp->flags[index] = 'f';
     sp->count++;
 }
 
@@ -166,7 +166,7 @@ void removeElement(SET* sp, void* elt) {
         unsigned index = findElementIndex(sp, elt, &found);
         if (found == false)
             return;
-        sp->flags[index] = 2;
+        sp->flags[index] = 'd';
         sp->count--;
     }
 }
@@ -211,7 +211,7 @@ void* getElements(SET* sp) { //TODO check if this works
     unsigned whereToAdd = 0;
     unsigned i = 0;
     for (; i < sp->size; i++) {
-        if (sp->flags[i] == 1) {
+        if (sp->flags[i] == 'f') {
             toReturn[whereToAdd] = sp->data[i];
             whereToAdd++;
         }
