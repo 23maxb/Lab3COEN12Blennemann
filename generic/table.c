@@ -86,7 +86,7 @@ int numElements(SET* sp) {
  * @param elt the element to search for
  * @return the index where the element is or should be added
  * or sp->size if the element is not found
- * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user give hash function) average case
+ * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user given hash function) average case
  */
 static unsigned int findElementIndex(SET* sp, void* elt, bool* found) {
     assert(sp != NULL);
@@ -135,7 +135,7 @@ static unsigned int findElementIndex(SET* sp, void* elt, bool* found) {
  *
  * @param sp the set to add an element to
  * @param elt the element to add.
- * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user give hash function) average case
+ * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user given hash function) average case
  */
 void addElement(SET* sp, void* elt) {
     assert(sp != NULL);
@@ -157,7 +157,7 @@ void addElement(SET* sp, void* elt) {
  *
  * @param sp the set to remove the element from
  * @param elt the element to remove
- * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user give hash function) average case
+ * @timeComplexity (O(N) + user given hash function) worst case; (O(1) + user given hash function) average case
  */
 void removeElement(SET* sp, void* elt) {
     assert(sp != NULL);
