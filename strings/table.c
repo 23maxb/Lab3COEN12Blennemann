@@ -79,6 +79,7 @@ void destroySet(SET* sp) {
             free(sp->data[i]);
     free(sp->data);
     free(sp->flags);
+    free(sp);
 }
 
 /**

@@ -65,6 +65,7 @@ void destroySet(SET* sp) {
     assert(sp != NULL);
     free(sp->data);
     free(sp->flags);
+    free(sp);
 }
 
 /**
