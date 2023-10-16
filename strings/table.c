@@ -15,10 +15,13 @@
 #include <assert.h>
 #include <string.h>
 #include <stdbool.h>
+#define EMPTY 'e'
+#define FILLED 'f'
+#define DELETED 'd'
 
 typedef struct set {
     char** data;
-    char* flags; // 'e' = empty, 'f' = filled, 'd' = deleted
+    char* flags; // 'e' = empty, 'f' = filled, DELETED = deleted
     unsigned int count; // Number of elements that contain data
     unsigned int size; // How much space is allocated to the array
 } stringTable;
@@ -58,7 +61,7 @@ SET* createSet(int maxElts) { // maxElts should be unsigned but the header file 
     assert(a->flags != NULL);
     unsigned i = 0;
     for (; i < maxElts; i++)
-        a->flags[i] = 'e';
+        a->flags[i] = EMPTY;
     return a;
 }
 
@@ -72,7 +75,7 @@ void destroySet(SET* sp) {
     assert(sp != NULL);
     unsigned i = 0;
     for (; i < sp->count; i++)
-        if (sp->flags[i] != 'e')
+        if (sp->flags[i] != EMPTY)
             free(sp->data[i]);
     free(sp->data);
     free(sp->flags);
@@ -110,32 +113,32 @@ static unsigned int findElementIndex(SET* sp, char* elt, bool* found) {
     unsigned index = home;
     unsigned firstDeleted = sp->size;
     if (index < sp->size) {
-        if (sp->flags[index] == 'e') {
+        if (sp->flags[index] == EMPTY) {
             if (found != NULL) {
                 *found = false;
             }
             return index;
-        } else if (sp->flags[index] == 'f' && strcmp(sp->data[index], elt) == 0) {
+        } else if (sp->flags[index] == FILLED && strcmp(sp->data[index], elt) == 0) {
             if (found != NULL)
                 *found = true;
             return index;
         } else {
-            if (sp->flags[index] == 'd' && firstDeleted == sp->size)
+            if (sp->flags[index] == DELETED && firstDeleted == sp->size)
                 firstDeleted = index;
             index = (index + 1) % sp->size;
         }
     }
     while (index < sp->size && index != home) {
-        if (sp->flags[index] == 'e') {
+        if (sp->flags[index] == EMPTY) {
             if (found != NULL)
                 *found = false;
             return index;
-        } else if (sp->flags[index] == 'f' && strcmp(sp->data[index], elt) == 0) {
+        } else if (sp->flags[index] == FILLED && strcmp(sp->data[index], elt) == 0) {
             if (found != NULL)
                 *found = true;
             return index;
         } else {
-            if (sp->flags[index] == 'd' && firstDeleted == sp->size)
+            if (sp->flags[index] == DELETED && firstDeleted == sp->size)
                 firstDeleted = index;
             index = (index + 1) % sp->size;
         }
@@ -162,7 +165,7 @@ void addElement(SET* sp, char* elt) {
     if (alreadyExists)
         return;
     sp->data[index] = strdup(elt);
-    sp->flags[index] = 'f';
+    sp->flags[index] = FILLED;
     sp->count++;
 }
 
@@ -181,7 +184,7 @@ void removeElement(SET* sp, char* elt) {
         unsigned index = findElementIndex(sp, elt, &found);
         if (found == false)
             return;
-        sp->flags[index] = 'd';
+        sp->flags[index] = DELETED;
         sp->count--;
     }
 }
@@ -227,7 +230,7 @@ char** getElements(SET* sp) {
     unsigned whereToAdd = 0;
     unsigned i = 0;
     for (; i < sp->size; i++) {
-        if (sp->flags[i] == 'f') {
+        if (sp->flags[i] == FILLED) {
             toReturn[whereToAdd] = strdup(sp->data[i]);
             whereToAdd++;
         }
